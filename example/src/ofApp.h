@@ -1,7 +1,9 @@
 #pragma once
 
 #include "ofMain.h"
-#include "ofxVoronoi2D.h"
+#include "ofxOpenGP.h"
+
+using namespace opengp;
 
 class ofApp : public ofBaseApp{
   public:
@@ -13,9 +15,7 @@ class ofApp : public ofBaseApp{
     void mousePressed(int x, int y, int button);
 
   private:
-    ofxVoronoi2D voronoi;
-    vector<ofVec2f> pts;
-    ofMesh mesh;
-    unsigned int count;
     int dispMode;
+    ofMesh mesh;
+    ofEasyCam cam;
 };

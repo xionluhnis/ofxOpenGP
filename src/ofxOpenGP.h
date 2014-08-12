@@ -39,14 +39,13 @@ enum ofxMeshType {
   OFX_UNKNOWN_MESH
 };
 
+using namespace opengp;
+
 class ofxOpenGP {
   public:
 
-    // the surface mesh class
-    using namespace opengp;
-
     // conversion
-    static bool convert(const Surface_mesh &mesh, ofMesh &newMesh, ofxMeshType meshType = OFX_AUTO_MESH){
+    static bool convert(Surface_mesh &mesh, ofMesh &newMesh, ofxMeshType meshType = OFX_AUTO_MESH){
       typedef unsigned int Index;
 
       mesh.property_stats();
@@ -103,7 +102,7 @@ class ofxOpenGP {
         // valence check
         int valence = 0;
         do {
-          Index idx = vc->idx();
+          Index idx = (*vc).idx();
           newMesh.addIndex(idx);
           ++valence;
         } while (++vc != vc_end);
