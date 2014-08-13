@@ -78,6 +78,8 @@ class ofxOpenGP {
 
       // get (pre-defined) property storing vertex positions
       Surface_mesh::Vertex_property<Vec3> points = mesh.get_vertex_property<Vec3>("v:point");
+      Surface_mesh::Vertex_property<Normal> normals = mesh.get_vertex_property<Normal>("v:normal");
+      Surface_mesh::Vertex_property<Color> colors = mesh.get_vertex_property<Color>("v:color");
 
       // copy all vertices
       Surface_mesh::Vertex_iterator vit, vend = mesh.vertices_end();
@@ -86,8 +88,18 @@ class ofxOpenGP {
         const Vec3 &v = points[*vit] * scale;
         newMesh.addVertex(ofVec3f(v.x, v.y, v.z));
 
-        // TODO add colors, normals, texture coordinates
+        // TODO add texture coordinates
         // and other properties (mapping?)
+        // normals
+        if(normals){
+          const Normal &n = normals[*vit];
+          newMesh.addNormal(ofVec3f(n.x, n.y, n.z));
+        }
+        // colors
+        if(colors){
+          const Color &c = colors[*vit];
+          newMesh.addColor(ofColor(c.x, c.y, c.z));
+        }
       }
 
       // add all faces
