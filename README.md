@@ -28,25 +28,31 @@ FAQ
 ---
 
 **Q. My mesh looks tiny with my `ofEasyCam`, what should I do?**
+
 A. Either you scale your mesh, change your camera, or automatically scale it using the 4th parameter of `ofxOpenGP::convert`.
 
 **Q. My mesh is a polygonal mesh with fancy face valences, what can I do?**
+
 A. OpenGP automatically triangulate meshes in the conversion using `Surface_mesh::triangulate` if needed.
 While quad meshes are easy and mostly safe, this may not be the case for general polygons.
 You may want to take care of the topology yourself beforehand.
 
 **Q. Can you tell us more about `ofxOpenGP::convert`?**
+
 A. Here it is:
 
 ```cpp
-bool ofxOpenGP::convert(opengp::Surface_mesh &mesh, ofMesh &newMesh, ofxMeshType meshType, float scaling = 1.0f);
+bool ofxOpenGP::convert(opengp::Surface_mesh &mesh, 
+                        ofMesh &newMesh, 
+                        ofxMeshType meshType, 
+                        float scaling = 1.0f);
 ```
 
-  - Param `mesh`: your surface mesh from OpenGP (not `const` as we use triangulate when we need to)
-  - Param `newMesh`: your ofMesh for an easy display within OpenFrameworks
-  - Param `meshType`: one of `OFX_AUTO_MESH`, `OFX_TRIANGLE_MESH` and `OFX_QUAD_MESH`
-  - Param `scaling`: a factor by which to scale the vertex positions (because of `ofEasyCam`
-  - Returns: `true` if it worked without error, `false` in case an error occurred
+  - `mesh`: your surface mesh from OpenGP (not `const` as we use triangulate when we need to)
+  - `newMesh`: your ofMesh for an easy display within OpenFrameworks
+  - `meshType`: one of `OFX_AUTO_MESH`, `OFX_TRIANGLE_MESH` and `OFX_QUAD_MESH`
+  - `scaling`: a factor by which to scale the vertex positions (because of `ofEasyCam`
+  - returns `true` if it worked without error, `false` in case an error occurred
 
 License
 -------
