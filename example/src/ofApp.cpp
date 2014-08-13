@@ -5,9 +5,7 @@
 //--------------------------------------------------------------
 void ofApp::setup(){
   ofSetFrameRate(24);
-  dispMode = 0;
-  showNormals = false;
-  transparent = false;
+  dispState = DISP_MODE_FILL | DISP_HELP;
   // ofEnableAntiAliasing();
   ofEnableDepthTest(); //make sure we test depth for 3d
   ofSetVerticalSync(true);
@@ -56,24 +54,25 @@ void ofApp::draw(){
   ofBackgroundGradient(centerColor, edgeColor, OF_GRADIENT_CIRCULAR);
 
   cam.begin();
-  ofSetColor(255, 255, 255, transparent ? 70 : 255);
-  switch(dispMode){
-    case '1':
-      glPointSize(5.0f);
-      mesh.drawVertices();
-      // mesh.draw(OF_MESH_POINTS);
-      break;
-    case '2':
-      mesh.drawWireframe();
-      // mesh.draw(OF_MESH_WIREFRAME);
-      break;
-    default:
-      //mesh.draw(OF_MESH_FILL);
-      // mesh.drawFaces();
-      mesh.draw();
+  ofSetColor(255, 255, 255, has(DISP_TRANSPARENT) ? 70 : 255);
+  // display mesh
+  if(has(DISP_MODE_FILL)){
+    //mesh.draw(OF_MESH_FILL);
+    // mesh.drawFaces();
+    mesh.draw();
+    ofSetColor(150, 150, 150);
+  }
+  if(has(DISP_MODE_WIRE)){
+    mesh.drawWireframe();
+    // mesh.draw(OF_MESH_WIREFRAME);
+  }
+  if(has(DISP_MODE_POINTS)){
+    glPointSize(5.0f);
+    mesh.drawVertices();
+    // mesh.draw(OF_MESH_POINTS);
   }
   // draw our normals, and show that they are perpendicular to the vector from the center to the vertex
-  if(showNormals){
+  if(has(DISP_NORMALS)){
     vector<ofVec3f> n = mesh.getNormals();
     vector<ofVec3f> v = mesh.getVertices();
     float normalLength = 10.;
@@ -91,15 +90,18 @@ void ofApp::draw(){
   cam.end();
 
   // text
-  ofSetColor(255,255,255);
-  int ypos = 50;
-  ofDrawBitmapString("<f> Toggle fullscreen", 50, ypos); ypos += 20;
-  ofDrawBitmapString("<n> Toggle normals", 50, ypos); ypos += 20;
-  ofDrawBitmapString("<t> Toggle transparence", 50, ypos); ypos += 20;
-  ofDrawBitmapString("<1-3> Display mode", 50, ypos); ypos += 20;
-  ofDrawBitmapString("---", 50, ypos); ypos += 20;
-  ofDrawBitmapString(ofFilePath::getBaseName(path), 50, ypos); ypos += 20;
-  // ofDrawBitmapString("light", cam.worldToScreen(light.getGlobalPosition()) + ofPoint(10,0));
+  if(has(DISP_HELP)){
+    ofSetColor(255,255,255);
+    int ypos = 50;
+    ofDrawBitmapString("<f> Toggle fullscreen", 50, ypos); ypos += 20;
+    ofDrawBitmapString("<h> Toggle this help", 50, ypos); ypos += 20;
+    ofDrawBitmapString("<n> Toggle normals", 50, ypos); ypos += 20;
+    ofDrawBitmapString("<t> Toggle transparence", 50, ypos); ypos += 20;
+    ofDrawBitmapString("<1-3> Display mode", 50, ypos); ypos += 20;
+    ofDrawBitmapString("---", 50, ypos); ypos += 20;
+    ofDrawBitmapString(ofFilePath::getBaseName(path), 50, ypos); ypos += 20;
+    // ofDrawBitmapString("light", cam.worldToScreen(light.getGlobalPosition()) + ofPoint(10,0));
+  }
 }
 
 //--------------------------------------------------------------
@@ -111,13 +113,19 @@ void ofApp::keyPressed(int key){
     case '1':
     case '2':
     case '3':
-      dispMode = key;
+      toggle(1 << (key - '1'));
+      if(!has(DISP_MODE_POINTS | DISP_MODE_WIRE | DISP_MODE_FILL)){
+        toggle(1 << (key - '1'));
+      }
+      break;
+    case 'h':
+      toggle(DISP_HELP);
       break;
     case 'n':
-      showNormals = !showNormals;
+      toggle(DISP_NORMALS);
       break;
     case 't':
-      transparent = !transparent;
+      toggle(DISP_TRANSPARENT);
       break;
     case ' ':
       {
@@ -128,6 +136,7 @@ void ofApp::keyPressed(int key){
       }
       break;
   }
+  std::cout << "Display state: " << dispState << "\n";
 }
 
 //--------------------------------------------------------------
