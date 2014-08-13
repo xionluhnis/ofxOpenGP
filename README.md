@@ -27,9 +27,22 @@ For a more comprehensive case, look at the project in `example/`.
 FAQ
 ---
 
-**Q. My mesh looks tiny with my `ofEasyCam`, what should I do?**
+**Q. My mesh looks ugly with `ofEasyCam`, what should I do?**
 
-A. Either you scale your mesh, change your camera, or automatically scale it using the 4th parameter of `ofxOpenGP::convert`.
+A. First, you may want to normalize it using `ofxOpenGP::normalize`.
+This method translates the bounding box center to the origin, and then rescale the mesh to have a maximum width of 1.0f.
+
+As such, it will look tiny when using ofMesh because ofEasyCam doesn't expect a 1-box mesh.
+You can either
+
+  - rescale it specifically (see `ofxOpenGP::normalize` and `ofxOpenGP::rescale`), 
+  - change your camera settings, or
+  - automatically scale it using the 4th parameter of `ofxOpenGP::convert` such as in the example:
+
+```cpp
+float scale = 0.5f * std::min(ofGetWidth(), ofGetHeight());
+ofxOpenGP::convert(mesh, newMesh, OFX_AUTO_MESH, scale);
+```
 
 **Q. My mesh is a polygonal mesh with fancy face valences, what can I do?**
 
