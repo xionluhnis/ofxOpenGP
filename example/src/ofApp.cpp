@@ -9,11 +9,14 @@ void ofApp::setup(){
   ofEnableBlendMode(OF_BLENDMODE_ALPHA);
   // ofEnableSmoothing();
   // voronoi.setMinDist(std::epsilon<float>());
+
+  // mesh
   Surface_mesh surf;
   surf.read("data/bunny.obj");
 
   // convert using ofxOpenGP
-  bool ok = ofxOpenGP::convert(surf, mesh);
+  float scale = std::max(ofGetWidth(), ofGetHeight());
+  bool ok = ofxOpenGP::convert(surf, mesh, OFX_AUTO_MESH, scale);
   std::cout << "Loaded: " << (ok ? "OK" : "Failed!") << "\n";
 }
 

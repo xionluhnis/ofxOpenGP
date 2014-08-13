@@ -45,7 +45,7 @@ class ofxOpenGP {
   public:
 
     // conversion
-    static bool convert(Surface_mesh &mesh, ofMesh &newMesh, ofxMeshType meshType = OFX_AUTO_MESH){
+    static bool convert(Surface_mesh &mesh, ofMesh &newMesh, ofxMeshType meshType = OFX_AUTO_MESH, float scale = 1e0f){
       mesh.property_stats();
 
       if(meshType == OFX_AUTO_MESH){
@@ -83,7 +83,7 @@ class ofxOpenGP {
       Surface_mesh::Vertex_iterator vit, vend = mesh.vertices_end();
       for (vit = mesh.vertices_begin(); vit != vend; ++vit) {
         // access point property like an array
-        const Vec3 &v = points[*vit];
+        const Vec3 &v = points[*vit] * scale;
         newMesh.addVertex(ofVec3f(v.x, v.y, v.z));
 
         // TODO add colors, normals, texture coordinates

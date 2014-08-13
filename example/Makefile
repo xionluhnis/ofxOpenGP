@@ -9,7 +9,7 @@ ifndef OF_ROOT
     OF_ROOT=../../..
 endif
 
-MAKEFILE_DEBUG=1
+# MAKEFILE_DEBUG=1
 
 # call the project makefile!
 include $(OF_ROOT)/libs/openFrameworksCompiled/project/makefileCommon/compile.project.mk
