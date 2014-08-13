@@ -19,6 +19,7 @@ void ofApp::setup(){
   Surface_mesh surf;
   surf.read("data/bunny.obj");
   surf.update_vertex_normals();
+  surf.property_stats();
 
   // convert using ofxOpenGP
   float scale = 0.5f * std::min(ofGetWidth(), ofGetHeight());
@@ -80,8 +81,11 @@ void ofApp::draw(){
 
   // text
   ofSetColor(255,255,255);
-  ofDrawBitmapString("<n> Toggle normals", 50, 50);
-  ofDrawBitmapString("<t> Toggle transparence", 50, 70);
+  int ypos = 50;
+  ofDrawBitmapString("<f> Toggle fullscreen", 50, ypos); ypos += 20;
+  ofDrawBitmapString("<n> Toggle normals", 50, ypos); ypos += 20;
+  ofDrawBitmapString("<t> Toggle transparence", 50, ypos); ypos += 20;
+  ofDrawBitmapString("<1-3> Display mode", 50, ypos); ypos += 20;
   // ofDrawBitmapString("light", cam.worldToScreen(light.getGlobalPosition()) + ofPoint(10,0));
 }
 

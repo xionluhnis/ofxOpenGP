@@ -46,8 +46,6 @@ class ofxOpenGP {
 
     // conversion
     static bool convert(Surface_mesh &mesh, ofMesh &newMesh, ofxMeshType meshType = OFX_AUTO_MESH, float scale = 1e0f){
-      mesh.property_stats();
-
       if(meshType == OFX_AUTO_MESH){
         if(mesh.is_triangle_mesh()){
           meshType = OFX_TRIANGLE_MESH;
