@@ -28,6 +28,7 @@
 #pragma once
 
 #include <iostream>
+#include <limits>
 #include "ofMain.h"
 #include "OpenGP/Surface_mesh.h"
 
@@ -114,6 +115,66 @@ class ofxOpenGP {
         } while (--tri > 0);
       }
       return true;
+    }
+
+    static void translate(Surface_mesh &mesh, const Vec3 &t) {
+      Surface_mesh::Vertex_property<Vec3> points = mesh.get_vertex_property<Vec3>("v:point");
+      Surface_mesh::Vertex_iterator vit, vend = mesh.vertices_end();
+      for (vit = mesh.vertices_begin(); vit != vend; ++vit) {
+        points[*vit] += t;
+      }
+    }
+
+    static Vec3 centroid(Surface_mesh &mesh) {
+      Surface_mesh::Vertex_property<Vec3> points = mesh.get_vertex_property<Vec3>("v:point");
+
+      // compute centroid
+      Vec3 centroid(0.0f, 0.0f, 0.0f);
+
+      // copy all vertices
+      Surface_mesh::Vertex_iterator vit, vend = mesh.vertices_end();
+      for (vit = mesh.vertices_begin(); vit != vend; ++vit) {
+        centroid += points[*vit];
+      }
+      centroid *= 1.0f / mesh.n_vertices();
+      return centroid;
+    }
+
+    static void bbox(Surface_mesh &mesh, Vec3 &min, Vec3 &max){
+      Surface_mesh::Vertex_property<Vec3> points = mesh.get_vertex_property<Vec3>("v:point");
+
+      // compute bounding box
+      Surface_mesh::Vertex_iterator vit = mesh.vertices_begin(), vend = mesh.vertices_end();
+      min = max = points[*vit]; // set first vertex as min and maximum
+      for (; vit != vend; ++vit) {
+        Vec3 v = points[*vit];
+        min.x = std::min(min.x, v.x); max.x = std::max(max.x, v.x);
+        min.y = std::min(min.y, v.y); max.y = std::max(max.y, v.y);
+        min.z = std::min(min.z, v.z); max.z = std::max(max.z, v.z);
+      }
+    }
+
+    static void rescale(Surface_mesh &mesh, float scaleFactor){
+      Surface_mesh::Vertex_property<Vec3> points = mesh.get_vertex_property<Vec3>("v:point");
+
+      // rescale all vertices
+      Surface_mesh::Vertex_iterator vit, vend = mesh.vertices_end();
+      for (vit = mesh.vertices_begin(); vit != vend; ++vit) {
+        points[*vit] *= scaleFactor;
+      }
+    }
+
+    static void normalize(Surface_mesh &mesh){
+      Vec3 a, b;
+      bbox(mesh, a, b);
+
+      // center in bbox
+      translate(mesh, -(a + b) * 0.5f);
+
+      // rescale to have bbox of max width 1
+      Vec3 diag = b - a;
+      float maxWidth = std::max(diag.x, std::max(diag.y, diag.z));
+      rescale(mesh, 1.0f / maxWidth);
     }
 };
 

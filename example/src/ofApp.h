@@ -18,7 +18,9 @@ class ofApp : public ofBaseApp{
     int dispMode;
     bool showNormals;
     bool transparent;
-    ofMesh mesh;
+    ofVboMesh mesh;
     ofEasyCam cam;
     ofLight light;
+    string path;
+    bool pathChanged;
 };

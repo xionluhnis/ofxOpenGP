@@ -1,11 +1,12 @@
 #include "ofApp.h"
+#include <limits>
 #include <iostream>
 
 //--------------------------------------------------------------
 void ofApp::setup(){
   ofSetFrameRate(24);
   dispMode = 0;
-  showNormals = true;
+  showNormals = false;
   transparent = false;
   // ofEnableAntiAliasing();
   ofEnableDepthTest(); //make sure we test depth for 3d
@@ -14,17 +15,8 @@ void ofApp::setup(){
   // ofEnableAlphaBlending();
   // ofEnableBlendMode(OF_BLENDMODE_ALPHA);
   ofEnableSmoothing();
-
-  // mesh
-  Surface_mesh surf;
-  surf.read("data/bunny.obj");
-  surf.update_vertex_normals();
-  surf.property_stats();
-
-  // convert using ofxOpenGP
-  float scale = 0.5f * std::min(ofGetWidth(), ofGetHeight());
-  bool ok = ofxOpenGP::convert(surf, mesh, OFX_AUTO_MESH, scale);
-  std::cout << "Loaded: " << (ok ? "OK" : "Failed!") << "\n";
+  path = "data/bunny.obj";
+  pathChanged = true;
 
   // light the scene to show off why normals are important
   light.enable();
@@ -34,7 +26,25 @@ void ofApp::setup(){
 
 //--------------------------------------------------------------
 void ofApp::update(){
+  if(pathChanged){
+    pathChanged = false;
+    // mesh
+    Surface_mesh surf;
+    if(!surf.read(path)){
+      std::cerr << "Couldn't read " << path << "\n";
+      return;
+    }
+    surf.update_vertex_normals();
+    surf.property_stats();
 
+    // pre-processing
+    ofxOpenGP::normalize(surf);
+
+    // convert using ofxOpenGP
+    float scale = 0.5f * std::min(ofGetWidth(), ofGetHeight());
+    bool ok = ofxOpenGP::convert(surf, mesh, OFX_AUTO_MESH, scale);
+    std::cout << "Loaded " << path << ": " << (ok ? "OK" : "Failed!") << "\n";
+  }
 }
 
 //--------------------------------------------------------------
@@ -59,7 +69,8 @@ void ofApp::draw(){
       break;
     default:
       //mesh.draw(OF_MESH_FILL);
-      mesh.drawFaces();
+      // mesh.drawFaces();
+      mesh.draw();
   }
   // draw our normals, and show that they are perpendicular to the vector from the center to the vertex
   if(showNormals){
@@ -86,6 +97,8 @@ void ofApp::draw(){
   ofDrawBitmapString("<n> Toggle normals", 50, ypos); ypos += 20;
   ofDrawBitmapString("<t> Toggle transparence", 50, ypos); ypos += 20;
   ofDrawBitmapString("<1-3> Display mode", 50, ypos); ypos += 20;
+  ofDrawBitmapString("---", 50, ypos); ypos += 20;
+  ofDrawBitmapString(ofFilePath::getBaseName(path), 50, ypos); ypos += 20;
   // ofDrawBitmapString("light", cam.worldToScreen(light.getGlobalPosition()) + ofPoint(10,0));
 }
 
@@ -105,6 +118,14 @@ void ofApp::keyPressed(int key){
       break;
     case 't':
       transparent = !transparent;
+      break;
+    case ' ':
+      {
+        ofFile file(ofToDataPath(path));
+        ofFileDialogResult res = ofSystemLoadDialog("Chose mesh file (.obj, .off, .ply)", false, file.getEnclosingDirectory());
+        path = res.getPath();
+        pathChanged = true;
+      }
       break;
   }
 }
