@@ -46,8 +46,6 @@ class ofxOpenGP {
 
     // conversion
     static bool convert(Surface_mesh &mesh, ofMesh &newMesh, ofxMeshType meshType = OFX_AUTO_MESH){
-      typedef unsigned int Index;
-
       mesh.property_stats();
 
       if(meshType == OFX_AUTO_MESH){
@@ -61,20 +59,19 @@ class ofxOpenGP {
           meshType = OFX_TRIANGLE_MESH;
         }
       }
-      int goodValence;
+      int triIter;
       switch(meshType){
         case OFX_TRIANGLE_MESH:
-          newMesh.setMode(OF_PRIMITIVE_TRIANGLES);
-          goodValence = 3;
+          triIter = 1;
           break;
         case OFX_QUAD_MESH:
-          newMesh.setMode(OF_PRIMITIVE_QUADS);
-          goodValence = 4;
+          triIter = 2;
           break;
         default:
           // WARNING: not supported!
           return false;
       }
+      newMesh.setMode(OF_PRIMITIVE_TRIANGLES);
 
       // start from scratch
       newMesh.clear();
@@ -96,20 +93,15 @@ class ofxOpenGP {
       // add all faces
       Surface_mesh::Face_iterator fit, fend = mesh.faces_end();
       for(fit = mesh.faces_begin(); fit != fend; ++fit) {
-        // access ve rtices of the face
-        Surface_mesh::Vertex_around_face_circulator vc, vc_end;
-        vc_end = vc = mesh.vertices(*fit);
-        // valence check
-        int valence = 0;
+        // access vertices of the face
+        Surface_mesh::Vertex_around_face_circulator vc = mesh.vertices(*fit);
+        // triangle registration
+        int tri = triIter;
         do {
-          Index idx = (*vc).idx();
-          newMesh.addIndex(idx);
-          ++valence;
-        } while (++vc != vc_end);
-        if(valence != goodValence){
-          // WARNING: mesh type is invalid!
-          return false;
-        }
+          newMesh.addIndex((*vc).idx()); ++vc;
+          newMesh.addIndex((*vc).idx()); ++vc;
+          newMesh.addIndex((*vc).idx()); // not the last one
+        } while (--tri > 0);
       }
       return true;
     }

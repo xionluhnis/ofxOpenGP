@@ -1,0 +1,3 @@
+# Exclude cpp files
+$(eval ADDON_SOURCES_EXCLUDE = libs/OpenGP/src/OpenGP/Surface_mesh.cpp libs/OpenGP/src/OpenGP/surface_mesh/IO_obj.cpp libs/OpenGP/src/OpenGP/surface_mesh/IO.cpp libs/OpenGP/src/OpenGP/surface_mesh/IO_poly.cpp libs/OpenGP/src/OpenGP/surface_mesh/IO_stl.cpp libs/OpenGP/src/OpenGP/surface_mesh/remesh.cpp libs/OpenGP/src/OpenGP/surface_mesh/IO_off.cpp libs/OpenGP/src/OpenGP/CGAL/AABBSearcher.cpp libs/OpenGP/examples/surface_mesh_io.cpp libs/OpenGP/examples/surface_mesh_c++11.cpp libs/OpenGP/examples/global_properties.cpp libs/OpenGP/examples/surface_mesh_basics.cpp libs/OpenGP/examples/surface_mesh_iterators.cpp libs/OpenGP/examples/surface_mesh_barycenter.cpp )
+$(info EXCLUDE = $(ADDON_SOURCES_EXCLUDE))
