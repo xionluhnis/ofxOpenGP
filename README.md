@@ -42,16 +42,16 @@ You may want to take care of the topology yourself beforehand.
 A. Here it is:
 
 ```cpp
-bool ofxOpenGP::convert(opengp::Surface_mesh &mesh, 
-                        ofMesh &newMesh, 
-                        ofxMeshType meshType, 
+bool ofxOpenGP::convert(opengp::Surface_mesh &mesh,
+                        ofMesh &newMesh,
+                        ofxMeshType meshType,
                         float scaling = 1.0f);
 ```
 
-  - `mesh`: your surface mesh from OpenGP (not `const` as we use triangulate when we need to)
-  - `newMesh`: your ofMesh for an easy display within OpenFrameworks
+  - `mesh`: your surface mesh from OpenGP (not `const` as we use triangulate when needed)
+  - `newMesh`: your `ofMesh` for an easy display within OpenFrameworks
   - `meshType`: one of `OFX_AUTO_MESH`, `OFX_TRIANGLE_MESH` and `OFX_QUAD_MESH`
-  - `scaling`: a factor by which to scale the vertex positions (because of `ofEasyCam`
+  - `scaling`: a factor by which to scale the vertex positions (because of `ofEasyCam`)
   - returns `true` if it worked without error, `false` in case an error occurred
 
 License
