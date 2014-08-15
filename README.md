@@ -22,7 +22,7 @@ ofMesh newMesh;
 ofxOpenGP::convert(mesh, newMesh);
 ```
 
-For a more comprehensive case, look at the two projects in `example-simple/` and `example-visualization/`.
+For a more comprehensive case, look at the two projects in `example-simple/` and `example-visualize/`.
 
 Advanced Usage
 --------------
