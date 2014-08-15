@@ -42,28 +42,63 @@ enum ofxMeshType {
   OFX_UNKNOWN_MESH
 };
 
+enum ofxColorType {
+  OFX_AUTO_COLORS=0,
+  OFX_VERTEX_COLORS,
+  OFX_FACE_COLORS,
+  OFX_NO_COLORS
+};
+
 using namespace opengp;
 
 class ofxOpenGP {
   public:
 
     /**
+     * Setting container
+     */
+    struct Settings {
+      ofxMeshType meshType;
+      ofxColorType colorType;
+      float meshScaling;
+
+      Settings() : meshType(OFX_AUTO_MESH), colorType(OFX_AUTO_COLORS), meshScaling(1.0f) {}
+      // implicit conversions
+      Settings(ofxMeshType type) : meshType(type), colorType(OFX_AUTO_COLORS), meshScaling(1.0f) {}
+      Settings(ofxColorType type) : meshType(OFX_AUTO_MESH), colorType(type), meshScaling(1.0f) {}
+      Settings(float scale) : meshType(OFX_AUTO_MESH), colorType(OFX_AUTO_COLORS), meshScaling(scale) {}
+
+      Settings& operator <<(ofxMeshType type){
+        meshType = type;
+        return *this;
+      }
+      Settings& operator <<(ofxColorType type){
+        colorType = type;
+        return *this;
+      }
+      Settings& operator <<(float scale){
+        meshScaling = scale;
+        return *this;
+      }
+    };
+
+    /**
      * \brief Convert an OpenGP mesh into an ofMesh
      */
-    static bool convert(Surface_mesh &mesh, ofMesh &newMesh, ofxMeshType meshType = OFX_AUTO_MESH, float scale = 1e0f){
-      if(meshType == OFX_AUTO_MESH){
+    static bool convert(Surface_mesh &mesh, ofMesh &newMesh, Settings settings = Settings()){
+      if(settings.meshType == OFX_AUTO_MESH){
         if(mesh.is_triangle_mesh()){
-          meshType = OFX_TRIANGLE_MESH;
+          settings.meshType = OFX_TRIANGLE_MESH;
         } else if(mesh.is_quad_mesh()){
-          meshType = OFX_QUAD_MESH;
+          settings.meshType = OFX_QUAD_MESH;
         } else {
           // we triangulate it
           mesh.triangulate();
-          meshType = OFX_TRIANGLE_MESH;
+          settings.meshType = OFX_TRIANGLE_MESH;
         }
       }
       int triIter;
-      switch(meshType){
+      switch(settings.meshType){
         case OFX_TRIANGLE_MESH:
           triIter = 1;
           break;
@@ -83,40 +118,96 @@ class ofxOpenGP {
       Surface_mesh::Vertex_property<Vec3> points = mesh.get_vertex_property<Vec3>("v:point");
       Surface_mesh::Vertex_property<Normal> normals = mesh.get_vertex_property<Normal>("v:normal");
       Surface_mesh::Vertex_property<Color> colors = mesh.get_vertex_property<Color>("v:color");
+      Surface_mesh::Face_property<Color> face_colors = mesh.get_face_property<Color>("f:color");
 
-      // copy all vertices
-      Surface_mesh::Vertex_iterator vit, vend = mesh.vertices_end();
-      for (vit = mesh.vertices_begin(); vit != vend; ++vit) {
-        // access point property like an array
-        const Vec3 &v = points[*vit] * scale;
-        newMesh.addVertex(ofVec3f(v.x, v.y, v.z));
-
-        // TODO add texture coordinates
-        // and other properties (mapping?)
-        // normals
-        if(normals){
-          const Normal &n = normals[*vit];
-          newMesh.addNormal(ofVec3f(n.x, n.y, n.z));
-        }
-        // colors
-        if(colors){
-          const Color &c = colors[*vit];
-          newMesh.addColor(ofColor(c.x, c.y, c.z));
-        }
+      // resolve color type
+      if(settings.colorType == OFX_AUTO_COLORS){
+        if(colors) settings.colorType = OFX_VERTEX_COLORS;
+        else if(face_colors) settings.colorType = OFX_FACE_COLORS;
+        else settings.colorType = OFX_NO_COLORS;
       }
 
-      // add all faces
-      Surface_mesh::Face_iterator fit, fend = mesh.faces_end();
-      for(fit = mesh.faces_begin(); fit != fend; ++fit) {
-        // access vertices of the face
-        Surface_mesh::Vertex_around_face_circulator vc = mesh.vertices(*fit);
-        // triangle registration
-        int tri = triIter;
-        do {
-          newMesh.addIndex((*vc).idx()); ++vc;
-          newMesh.addIndex((*vc).idx()); ++vc;
-          newMesh.addIndex((*vc).idx()); // not the last one
-        } while (--tri > 0);
+      // check that it's valid
+      switch(settings.colorType){
+        case OFX_VERTEX_COLORS:
+          if(!colors){
+            // WARNING!
+            return false;
+          }
+          break;
+        case OFX_FACE_COLORS:
+          if(!face_colors){
+            // WARNING!
+            return false;
+          }
+          break;
+        default:
+          // ok
+      }
+
+      // different construction depending on color type
+      if(settings.colorType == OFX_FACE_COLORS){
+        // we treat colors as per-face
+        // => work with faces, not vertices!
+        Surface_mesh::Face_iterator f_it, f_end = mesh.faces_end();
+        for(f_it = mesh.faces_begin(); f_it != f_end; ++f_it){
+          // uniform face color
+          const Color &c = face_colors[*f_it];
+          // circulate over vertices
+          Surface_mesh::Vertex_around_face_circulator fv_it = mesh.vertices(*f_it);
+          int tri = triIter;
+          do {
+            for(unsigned int i = 0; i < 3; ++i){
+              // add vertex
+              const Vec3 &v = points[*fv_it] * settings.meshScaling;
+              newMesh.addVertex(ofVec3f(v.x, v.y, v.z));
+              // same color at each vertex
+              newMesh.addColor(ofColor(c.x, c.y, c.z));
+              // normal?
+              if(normals){
+                const Normal &n = normals[*fv_it];
+                newMesh.addNormal(ofVec3f(n.x, n.y, n.z));
+              }
+              if(i < 2) ++fv_it;
+            }
+          } while(--tri > 0);
+        }
+      } else {
+        // we treat colors as per-vertex
+        // copy all vertices
+        Surface_mesh::Vertex_iterator v_it, v_end = mesh.vertices_end();
+        for (v_it = mesh.vertices_begin(); v_it != v_end; ++v_it) {
+          // access point property like an array
+          const Vec3 &v = points[*v_it] * settings.meshScaling;
+          newMesh.addVertex(ofVec3f(v.x, v.y, v.z));
+
+          // TODO add texture coordinates
+          // and other properties (mapping?)
+          // normals
+          if(normals){
+            const Normal &n = normals[*v_it];
+            newMesh.addNormal(ofVec3f(n.x, n.y, n.z));
+          }
+          // colors
+          if(colors && settings.colorType == OFX_VERTEX_COLORS){
+            const Color &c = colors[*v_it];
+            newMesh.addColor(ofColor(c.x, c.y, c.z));
+          }
+        }
+
+        // add all faces
+        Surface_mesh::Face_iterator f_it, f_end = mesh.faces_end();
+        for(f_it = mesh.faces_begin(); f_it != f_end; ++f_it) {
+          // access vertices of the face
+          Surface_mesh::Vertex_around_face_circulator vc = mesh.vertices(*f_it);
+          // triangle registration
+          int tri = triIter;
+          do {
+            newMesh.addIndex((*vc).idx()); ++vc;
+            newMesh.addIndex((*vc).idx()); ++vc;
+            newMesh.addIndex((*vc).idx()); // not the last one
+          } while (--tri > 0);
+        }
       }
       return true;
     }
@@ -361,7 +452,7 @@ class ofxOpenGP {
     /**
      * Triangle quality using the circum-radius of faces to their minimum edge length
      */
-    static FaceFloat circ_radius_to_min_edge(Surface_mesh &mesh, const std::string &propName = CIRCUM_RADIUS_TO_MIN_EDGE) {
+    static FaceFloat circum_radius_to_min_edge(Surface_mesh &mesh, const std::string &propName = CIRCUM_RADIUS_TO_MIN_EDGE) {
       FaceFloat triqual = mesh.face_property<float>(propName);
 
       Surface_mesh::Face_iterator f_it, f_end = mesh.faces_end();
@@ -413,6 +504,31 @@ class ofxOpenGP {
       Surface_mesh::Vertex_property<Color> colors = mesh.vertex_property<Color>("v:color");
       for(v_it = mesh.vertices_begin(); v_it != v_end; ++v_it){
         colors[*v_it] = value_to_color(prop[*v_it], min, max);
+      }
+    }
+
+    /**
+     * Convert a property into a color mapping
+     */
+    static void property_to_color(Surface_mesh &mesh, const FaceFloat& prop) {
+      Surface_mesh::Face_iterator f_it, f_end = mesh.faces_end();
+      std::vector<float> values(mesh.n_faces());
+      for(f_it = mesh.faces_begin(); f_it != f_end; ++f_it){
+        float value = prop[*f_it];
+        values.push_back(value);
+      }
+
+      //discard upper and lower 5%
+      unsigned int N = values.size() - 1;
+      unsigned int i = N / 20;
+      std::sort(values.begin(), values.end());
+      float min = values[i];
+      float max = values[N - 1 - i];
+
+      // assign colors
+      Surface_mesh::Face_property<Color> colors = mesh.face_property<Color>("f:color");
+      for(f_it = mesh.faces_begin(); f_it != f_end; ++f_it){
+        colors[*f_it] = value_to_color(prop[*f_it], min, max);
       }
     }
 

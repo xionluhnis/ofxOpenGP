@@ -12,7 +12,8 @@ enum ogpMeshProperty {
   OGP_GAUSS_CURVATURE,
   OGP_K1,
   OGP_K2,
-  OGP_VORONOI_AREA
+  OGP_VORONOI_AREA,
+  OGP_TRIANGLE_QUALITY
 };
 
 class ofApp : public ofBaseApp{

@@ -51,34 +51,50 @@ void ofApp::update(){
   // compute new property mapping
   if(propChanged){
     propChanged = false;
+    // conversion settings
+    // - always with triangle meshes
+    ofxOpenGP::Settings settings = OFX_TRIANGLE_MESH;
 
-    Surface_mesh::Vertex_property<float> data;
+    Surface_mesh::Vertex_property<float> vdata;
+    Surface_mesh::Face_property<float> fdata;
     switch(prop){
       case OGP_UNIFORM_MEAN_CURVATURE:
-        data = ofxOpenGP::uniform_mean_curvature(mesh);
+        vdata = ofxOpenGP::uniform_mean_curvature(mesh);
         break;
       case OGP_MEAN_CURVATURE:
-        data = ofxOpenGP::mean_curvature(mesh);
+        vdata = ofxOpenGP::mean_curvature(mesh);
         break;
       case OGP_GAUSS_CURVATURE:
-        data = ofxOpenGP::gauss_curvature(mesh);
+        vdata = ofxOpenGP::gauss_curvature(mesh);
         break;
       case OGP_VORONOI_AREA:
-        data = ofxOpenGP::voronoi_area(mesh);
+        vdata = ofxOpenGP::voronoi_area(mesh);
+        break;
+      case OGP_TRIANGLE_QUALITY:
+        fdata = ofxOpenGP::circum_radius_to_min_edge(mesh);
+        break;
+      default:
+        settings << OFX_NO_COLORS;
         break;
     }
-    if(!data){
-      // no color (white)
-      Surface_mesh::Vertex_property<Color> colors = mesh.vertex_property<Color>("v:color");
-      mesh.remove_vertex_property<Color>(colors);
+
+    // map value to color between blue (min), green (mean) and red (max).
+    Surface_mesh::Face_property<Color> fc = mesh.get_face_property<Color>("f:color");
+    Surface_mesh::Vertex_property<Color> vc = mesh.get_vertex_property<Color>("v:color");
+    if(vdata){
+      ofxOpenGP::property_to_color(mesh, vdata);
+      settings << OFX_VERTEX_COLORS;
+    } else if(fdata){
+      ofxOpenGP::property_to_color(mesh, fdata);
+      settings << OFX_FACE_COLORS;
     } else {
-      // map value to color between blue (min), green (mean) and red (max).
-      ofxOpenGP::property_to_color(mesh, data);
+      // no color (white)
+      settings << OFX_NO_COLORS;
     }
 
     // convert using ofxOpenGP
     float scale = 0.5f * std::min(ofGetWidth(), ofGetHeight());
-    bool ok = ofxOpenGP::convert(mesh, dispMesh, OFX_TRIANGLE_MESH, scale);
+    ofxOpenGP::convert(mesh, dispMesh, settings << scale);
   }
 }
 
@@ -131,6 +147,9 @@ void ofApp::draw(){
       case OGP_VORONOI_AREA:
         ofDrawBitmapString("VORONOI_AREA", 50, ypos); ypos += 20;
         break;
+      case OGP_TRIANGLE_QUALITY:
+        ofDrawBitmapString("TRIANGLE_QUAL", 50, ypos); ypos += 20;
+        break;
     }
   }
 }
@@ -148,6 +167,7 @@ void ofApp::keyPressed(int key){
     case '5':
     case '6':
     case '7':
+    case '8':
       {
         ogpMeshProperty newProp = ogpMeshProperty(key - '1');
         if(newProp != prop){
