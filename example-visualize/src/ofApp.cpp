@@ -115,7 +115,9 @@ void ofApp::draw(){
 
   // display edges?
   ofSetColor(100, 100, 100, 70);
+  dispMesh.disableColors();
   dispMesh.drawWireframe();
+  dispMesh.enableColors();
   // mesh.draw(OF_MESH_WIREFRAME);
   cam.end();
 

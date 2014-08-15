@@ -143,6 +143,7 @@ class ofxOpenGP {
           break;
         default:
           // ok
+          break;
       }
 
       // different construction depending on color type
