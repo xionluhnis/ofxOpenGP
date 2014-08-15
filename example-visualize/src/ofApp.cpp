@@ -5,7 +5,9 @@
 //--------------------------------------------------------------
 void ofApp::setup(){
   ofSetFrameRate(24);
-  dispState = DISP_MODE_FILL | DISP_HELP;
+  help = true;
+  prop = OGP_NONE;
+  propChanged = true;
   // ofEnableAntiAliasing();
   ofEnableDepthTest(); //make sure we test depth for 3d
   ofSetVerticalSync(true);
@@ -24,24 +26,59 @@ void ofApp::setup(){
 
 //--------------------------------------------------------------
 void ofApp::update(){
+  // load new mesh
   if(pathChanged){
     pathChanged = false;
+    propChanged = true;
     // mesh
-    Surface_mesh surf;
-    if(!surf.read(path)){
+    mesh.clear();
+    if(!mesh.read(path)){
       std::cerr << "Couldn't read " << path << "\n";
       return;
     }
-    surf.update_vertex_normals();
-    surf.property_stats();
+    // triangulate mesh if not triangle-based
+    if(!mesh.is_triangle_mesh()){
+      mesh.triangulate();
+    }
+    // update vertices
+    mesh.update_vertex_normals();
 
     // pre-processing
-    ofxOpenGP::normalize(surf);
+    ofxOpenGP::normalize(mesh);
+    std::cout << "Loaded " << path << "\n";
+  }
+
+  // compute new property mapping
+  if(propChanged){
+    propChanged = false;
+
+    Surface_mesh::Vertex_property<float> data;
+    switch(prop){
+      case OGP_UNIFORM_MEAN_CURVATURE:
+        data = ofxOpenGP::uniform_mean_curvature(mesh);
+        break;
+      case OGP_MEAN_CURVATURE:
+        data = ofxOpenGP::mean_curvature(mesh);
+        break;
+      case OGP_GAUSS_CURVATURE:
+        data = ofxOpenGP::gauss_curvature(mesh);
+        break;
+      case OGP_VORONOI_AREA:
+        data = ofxOpenGP::voronoi_area(mesh);
+        break;
+    }
+    if(!data){
+      // no color (white)
+      Surface_mesh::Vertex_property<Color> colors = mesh.vertex_property<Color>("v:color");
+      mesh.remove_vertex_property<Color>(colors);
+    } else {
+      // map value to color between blue (min), green (mean) and red (max).
+      ofxOpenGP::property_to_color(mesh, data);
+    }
 
     // convert using ofxOpenGP
     float scale = 0.5f * std::min(ofGetWidth(), ofGetHeight());
-    bool ok = ofxOpenGP::convert(surf, mesh, OFX_AUTO_MESH, scale);
-    std::cout << "Loaded " << path << ": " << (ok ? "OK" : "Failed!") << "\n";
+    bool ok = ofxOpenGP::convert(mesh, dispMesh, OFX_TRIANGLE_MESH, scale);
   }
 }
 
@@ -54,53 +91,47 @@ void ofApp::draw(){
   ofBackgroundGradient(centerColor, edgeColor, OF_GRADIENT_CIRCULAR);
 
   cam.begin();
-  ofSetColor(255, 255, 255, has(DISP_TRANSPARENT) ? 70 : 255);
+  ofSetColor(255, 255, 255, 255);
   // display mesh
-  if(has(DISP_MODE_FILL)){
-    //mesh.draw(OF_MESH_FILL);
-    // mesh.drawFaces();
-    mesh.draw();
-    ofSetColor(150, 150, 150);
-  }
-  if(has(DISP_MODE_WIRE)){
-    mesh.drawWireframe();
-    // mesh.draw(OF_MESH_WIREFRAME);
-  }
-  if(has(DISP_MODE_POINTS)){
-    glPointSize(5.0f);
-    mesh.drawVertices();
-    // mesh.draw(OF_MESH_POINTS);
-  }
-  // draw our normals, and show that they are perpendicular to the vector from the center to the vertex
-  if(has(DISP_NORMALS)){
-    vector<ofVec3f> n = mesh.getNormals();
-    vector<ofVec3f> v = mesh.getVertices();
-    float normalLength = 10.;
-    ofDisableLighting();
-    ofSetColor(0,0,0,70);
-    for(unsigned int i=0; i < n.size() ;i++){
-      ofLine(v[i].x,v[i].y,v[i].z,
-          v[i].x+n[i].x*normalLength,v[i].y+n[i].y*normalLength,v[i].z+n[i].z*normalLength);
-      ofLine(.98*v[i].x,.98*v[i].y,.98*v[i].z,
-          .98*v[i].x+n[i].x*normalLength*.2,.98*v[i].y+n[i].y*normalLength*.2,.98*v[i].z+n[i].z*normalLength*.2);
-      ofLine(.98*v[i].x+n[i].x*normalLength*.2,.98*v[i].y+n[i].y*normalLength*.2,.98*v[i].z+n[i].z*normalLength*.2,
-          v[i].x+n[i].x*normalLength*.2,v[i].y+n[i].y*normalLength*.2,v[i].z+n[i].z*normalLength*.2);
-    }
-  }
+  //mesh.draw(OF_MESH_FILL);
+  // mesh.drawFaces();
+  dispMesh.draw();
+
+  // display edges?
+  ofSetColor(150, 150, 150, 70);
+  dispMesh.drawWireframe();
+  // mesh.draw(OF_MESH_WIREFRAME);
   cam.end();
 
   // text
-  if(has(DISP_HELP)){
+  if(help){
     ofSetColor(255,255,255);
     int ypos = 50;
     ofDrawBitmapString("<f> Toggle fullscreen", 50, ypos); ypos += 20;
     ofDrawBitmapString("<h> Toggle this help", 50, ypos); ypos += 20;
-    ofDrawBitmapString("<n> Toggle normals", 50, ypos); ypos += 20;
-    ofDrawBitmapString("<t> Toggle transparence", 50, ypos); ypos += 20;
-    ofDrawBitmapString("<1-3> Display mode", 50, ypos); ypos += 20;
+    ofDrawBitmapString("<1-7> Property to show", 50, ypos); ypos += 20;
     ofDrawBitmapString("---", 50, ypos); ypos += 20;
     ofDrawBitmapString(ofFilePath::getBaseName(path), 50, ypos); ypos += 20;
-    // ofDrawBitmapString("light", cam.worldToScreen(light.getGlobalPosition()) + ofPoint(10,0));
+    switch(prop){
+      case OGP_UNIFORM_MEAN_CURVATURE:
+        ofDrawBitmapString("UNIFORM_MEAN_CURVATURE", 50, ypos); ypos += 20;
+        break;
+      case OGP_MEAN_CURVATURE:
+        ofDrawBitmapString("MEAN_CURVATURE", 50, ypos); ypos += 20;
+        break;
+      case OGP_GAUSS_CURVATURE:
+        ofDrawBitmapString("GAUSS_CURVATURE", 50, ypos); ypos += 20;
+        break;
+      case OGP_K1:
+        ofDrawBitmapString("K1", 50, ypos); ypos += 20;
+        break;
+      case OGP_K2:
+        ofDrawBitmapString("K2", 50, ypos); ypos += 20;
+        break;
+      case OGP_VORONOI_AREA:
+        ofDrawBitmapString("VORONOI_AREA", 50, ypos); ypos += 20;
+        break;
+    }
   }
 }
 
@@ -113,30 +144,32 @@ void ofApp::keyPressed(int key){
     case '1':
     case '2':
     case '3':
-      toggle(1 << (key - '1'));
-      if(!has(DISP_MODE_POINTS | DISP_MODE_WIRE | DISP_MODE_FILL)){
-        toggle(1 << (key - '1'));
+    case '4':
+    case '5':
+    case '6':
+    case '7':
+      {
+        ogpMeshProperty newProp = ogpMeshProperty(key - '1');
+        if(newProp != prop){
+          prop = newProp;
+          propChanged = true;
+        }
       }
       break;
     case 'h':
-      toggle(DISP_HELP);
-      break;
-    case 'n':
-      toggle(DISP_NORMALS);
-      break;
-    case 't':
-      toggle(DISP_TRANSPARENT);
+      help = !help;
       break;
     case ' ':
       {
         ofFile file(ofToDataPath(path));
         ofFileDialogResult res = ofSystemLoadDialog("Chose mesh file (.obj, .off, .ply)", false, file.getEnclosingDirectory());
+        if(!res.bSuccess) return;
+        if(!ofFile(res.getPath()).canRead()) return;
         path = res.getPath();
         pathChanged = true;
       }
       break;
   }
-  std::cout << "Display state: " << dispState << "\n";
 }
 
 //--------------------------------------------------------------

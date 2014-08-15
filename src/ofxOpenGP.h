@@ -27,6 +27,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <limits>
@@ -197,7 +198,7 @@ class ofxOpenGP {
      * Voronoi area of each vertex
      */
     static VertexFloat voronoi_area(Surface_mesh &mesh, bool halfInv = true, const std::string &propName = VORONOI_AREA) {
-      VertexFloat voro_area = mesh.add_vertex_property<float>(propName);
+      VertexFloat voro_area = mesh.vertex_property<float>(propName);
 
       Surface_mesh::Vertex_iterator v_it, v_end = mesh.vertices_end();
       for (v_it = mesh.vertices_begin(); v_it != v_end; ++v_it){
@@ -221,7 +222,7 @@ class ofxOpenGP {
     static EdgeFloat cot_pair(Surface_mesh &mesh, const std::string &propName = COT_PAIR) {
       typedef Surface_mesh::Vertex Vertex;
       typedef Surface_mesh::Halfedge Halfedge;
-      EdgeFloat cot_pair = mesh.add_edge_property<float>(propName);
+      EdgeFloat cot_pair = mesh.edge_property<float>(propName);
 
       Surface_mesh::Edge_iterator e_it, e_end = mesh.edges_end();
       for (e_it = mesh.edges_begin(); e_it != e_end; ++e_it) {
@@ -261,7 +262,7 @@ class ofxOpenGP {
      */
     static VertexFloat uniform_mean_curvature(Surface_mesh &mesh, const std::string &propName = UNIFORM_MEAN_CURVATURE,
         const std::string &areaName = VORONOI_AREA, bool halfInvArea = true) {
-      VertexFloat uniform_mean_curv = mesh.add_vertex_property<float>(propName);
+      VertexFloat uniform_mean_curv = mesh.vertex_property<float>(propName);
       VertexFloat voro_area = mesh.get_vertex_property<float>(areaName);
       if(!voro_area) {
         voro_area = voronoi_area(mesh, halfInvArea, areaName);
@@ -290,7 +291,7 @@ class ofxOpenGP {
     static VertexFloat mean_curvature(Surface_mesh &mesh, const std::string &propName = MEAN_CURVATURE,
         const std::string &cotName = COT_PAIR,
         const std::string &areaName = VORONOI_AREA, bool halfInvArea = true) {
-      VertexFloat mean_curv = mesh.add_vertex_property<float>(propName);
+      VertexFloat mean_curv = mesh.vertex_property<float>(propName);
       EdgeFloat cot = mesh.get_edge_property<float>(cotName);
       if(!cot) {
         cot = cot_pair(mesh, cotName);
@@ -325,7 +326,7 @@ class ofxOpenGP {
      */
     static VertexFloat gauss_curvature(Surface_mesh &mesh, const std::string &propName = GAUSS_CURVATURE,
         const std::string &areaName = VORONOI_AREA, bool halfInvArea = true) {
-      VertexFloat gauss_curv = mesh.add_vertex_property<float>(propName);
+      VertexFloat gauss_curv = mesh.vertex_property<float>(propName);
       VertexFloat voro_area = mesh.get_vertex_property<float>(areaName);
       if(!voro_area) {
         voro_area = voronoi_area(mesh, halfInvArea, areaName);
@@ -334,6 +335,7 @@ class ofxOpenGP {
       // compute for all non-boundary vertices
       Surface_mesh::Vertex_iterator v_it, v_end = mesh.vertices_end();
       for (v_it = mesh.vertices_begin(); v_it != v_end; ++v_it) {
+        gauss_curv[*v_it] = 0.0f;
         if (!mesh.is_boundary(*v_it)) {
           float angle_sum = 0.0f;
 
@@ -352,6 +354,77 @@ class ofxOpenGP {
         }
       }
       return gauss_curv;
+    }
+
+    /**
+     * Convert a property into a color mapping
+     */
+    static void property_to_color(Surface_mesh &mesh, const VertexFloat& prop) {
+      Surface_mesh::Vertex_iterator v_it, v_end = mesh.vertices_end();
+      std::vector<float> values(mesh.n_vertices());
+      for(v_it = mesh.vertices_begin(); v_it != v_end; ++v_it){
+        float value = prop[*v_it];
+        values.push_back(value);
+      }
+
+      //discard upper and lower 5%
+      unsigned int N = values.size() - 1;
+      unsigned int i = N / 20;
+      std::sort(values.begin(), values.end());
+      float min = values[i];
+      float max = values[N - 1 - i];
+
+      // assign colors
+      Surface_mesh::Vertex_property<Color> colors = mesh.vertex_property<Color>("v:color");
+      for(v_it = mesh.vertices_begin(); v_it != v_end; ++v_it){
+        colors[*v_it] = value_to_color(prop[*v_it], min, max);
+      }
+    }
+
+    /**
+     * Convert a value to a color
+     *
+     * @param value the value
+     * @param min the expected minimum value
+     * @param max the expected maximum value
+     * @return the corresponding color
+     */
+    static Color value_to_color(float value, float min, float max) {
+      float v0, v1, v2, v3, v4;
+      v0 = min + 0.0/4.0 * (max - min);
+      v1 = min + 1.0/4.0 * (max - min);
+      v2 = min + 2.0/4.0 * (max - min);
+      v3 = min + 3.0/4.0 * (max - min);
+      v4 = min + 4.0/4.0 * (max - min);
+
+      Color col(255,255,255);
+      unsigned char u;
+
+      if (value < v0) col = Color(0, 0, 255);
+      else if (value > v4) col = Color(255, 0, 0);
+      else if (value <= v2){
+        if (value <= v1) // [v0, v1]
+        {
+          u = (unsigned char) (255.0 * (value - v0) / (v1 - v0));
+          col = Color(0, u, 255);
+        } else // ]v1, v2]
+        {
+          u = (unsigned char) (255.0 * (value - v1) / (v2 - v1));
+          col = Color(0, 255, 255-u);
+        }
+      } else {
+        if (value <= v3) // ]v2, v3]
+        {
+          u = (unsigned char) (255.0 * (value - v2) / (v3 - v2));
+          col = Color(u, 255, 0);
+        }
+        else // ]v3, v4]
+        {
+          u = (unsigned char) (255.0 * (value - v3) / (v4 - v3));
+          col = Color(255, 255-u, 0);
+        }
+      }
+      return col;
     }
 
 };
