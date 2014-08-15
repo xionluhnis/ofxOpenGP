@@ -189,10 +189,12 @@ class ofxOpenGP {
     static const std::string UNIFORM_MEAN_CURVATURE;
     static const std::string MEAN_CURVATURE;
     static const std::string GAUSS_CURVATURE;
+    static const std::string CIRCUM_RADIUS_TO_MIN_EDGE;
 
     // property type
     typedef Surface_mesh::Vertex_property<float> VertexFloat;
     typedef Surface_mesh::Edge_property<float> EdgeFloat;
+    typedef Surface_mesh::Face_property<float> FaceFloat;
 
     /**
      * Voronoi area of each vertex
@@ -354,6 +356,39 @@ class ofxOpenGP {
         }
       }
       return gauss_curv;
+    }
+
+    /**
+     * Triangle quality using the circum-radius of faces to their minimum edge length
+     */
+    static FaceFloat circ_radius_to_min_edge(Surface_mesh &mesh, const std::string &propName = CIRCUM_RADIUS_TO_MIN_EDGE) {
+      FaceFloat triqual = mesh.face_property<float>(propName);
+
+      Surface_mesh::Face_iterator f_it, f_end = mesh.faces_end();
+      for (f_it=mesh.faces_begin(); f_it != f_end; ++f_it){
+        Surface_mesh::Vertex_around_face_circulator fv_it = mesh.vertices(*f_it);
+        // getting the vertices
+        Point v0 = mesh.position(*fv_it); ++fv_it;
+        Point v1 = mesh.position(*fv_it); ++fv_it;
+        Point v2 = mesh.position(*fv_it);
+        // getting the edges
+        Point d0 = v1 - v0;
+        Point d1 = v2 - v0;
+        Point d2 = v2 - v1;
+        // circumradius computation
+        float denom = 4.0 * d0.cross(d1).sqrnorm();
+        float circum_radius_sq;
+        if(denom < 1e-4){
+          // too small for us, we just assign a large value
+          // for numerical stability
+          circum_radius_sq = 1e12;
+        }else{
+          circum_radius_sq = d0.sqrnorm() * d1.sqrnorm() * d2.sqrnorm() / denom;
+        }
+        float min_length_sq = std::min(std::min(d0.sqrnorm(), d1.sqrnorm()), d2.sqrnorm());
+        triqual[*f_it] = std::sqrt(circum_radius_sq / min_length_sq);
+      }
+      return triqual;
     }
 
     /**

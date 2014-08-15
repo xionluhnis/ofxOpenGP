@@ -589,6 +589,10 @@ public:
         return opengp::cross(*this, o);
     }
 
+    Scalar sqrnorm() const {
+        return opengp::sqrnorm(*this);
+    }
+
     Scalar norm() const {
         return opengp::norm(*this);
     }
