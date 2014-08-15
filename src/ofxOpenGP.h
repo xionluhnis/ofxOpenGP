@@ -183,11 +183,11 @@ class ofxOpenGP {
     ///// Properties //////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////
     // property names
-    static const std::string VORONOI_AREA = "v:voronoi_area";
-    static const std::string COT_PAIR = "e:cot_pair";
-    static const std::string UNIFORM_MEAN_CURVATURE = "v:uniform_mean_curvature";
-    static const std::string MEAN_CURVATURE = "v:mean_curvature";
-    static const std::string GAUSS_CURVATURE = "v:gauss_curvature";
+    static const std::string VORONOI_AREA;
+    static const std::string COT_PAIR;
+    static const std::string UNIFORM_MEAN_CURVATURE;
+    static const std::string MEAN_CURVATURE;
+    static const std::string GAUSS_CURVATURE;
 
     // property type
     typedef Surface_mesh::Vertex_property<float> VertexFloat;
@@ -202,17 +202,17 @@ class ofxOpenGP {
       Surface_mesh::Vertex_iterator v_it, v_end = mesh.vertices_end();
       for (v_it = mesh.vertices_begin(); v_it != v_end; ++v_it){
         float area = 0.0f;
-        Surface_mesh::Face_around_vertex_circulator fv_it, fv_end;
-        fv_it = fv_end = mesh.faces(*v_it);
+        Surface_mesh::Face_around_vertex_circulator vf_it, vf_end;
+        vf_it = vf_end = mesh.faces(*v_it);
         do {
           Surface_mesh::Vertex_around_face_circulator fv_it = mesh.vertices(*vf_it);
-          const Point& P = mesh.point(*fv_it);
+          const Point& P = mesh.position(*fv_it);
           ++fv_it;
-          const Point& Q = mesh.point(*fv_it);
+          const Point& Q = mesh.position(*fv_it);
           ++fv_it;
-          const Point& R = mesh.point(*fv_it);
+          const Point& R = mesh.position(*fv_it);
           area += cross(Q - P, R - P).norm() * 0.5f * 0.3333f;
-        } while(++fv_it != fv_end);
+        } while(++vf_it != vf_end);
         voro_area[*v_it] = halfInv ? 1.0 / (2.0 * area) : area;
       }
       return voro_area;
@@ -228,14 +228,14 @@ class ofxOpenGP {
         float w = 0.0f;
         Halfedge h0 = mesh.halfedge(*e_it, 0);
         Vertex v0 = mesh.to_vertex(h0);
-        Point p0 = mesh.point(v0);
+        Point p0 = mesh.position(v0);
 
         Halfedge h1 = mesh.halfedge(*e_it, 1);
         Vertex v1 = mesh.to_vertex(h1);
-        Point p1 = mesh.point(v1);
+        Point p1 = mesh.position(v1);
 
         Halfedge h2 = mesh.next_halfedge(h0);
-        Point p2 = mesh.point(mesh.to_vertex(h2));
+        Point p2 = mesh.position(mesh.to_vertex(h2));
 
         Point d0 = (p0 - p2).normalize();
         Point d1 = (p1 - p2).normalize();
@@ -243,7 +243,7 @@ class ofxOpenGP {
         w += 1.0 / std::tan(std::acos(std::min(0.99f, std::max(-0.99f, d0.dot(d1) ))));
 
         h2 = mesh.next_halfedge(h1);
-        p2 = mesh.point(mesh.to_vertex(h2));
+        p2 = mesh.position(mesh.to_vertex(h2));
 
         d0 = (p0 - p2).normalize();
         d1 = (p1 - p2).normalize();
@@ -259,18 +259,62 @@ class ofxOpenGP {
     /**
      * Uniform mean curvature H at each vertex
      */
-    static VertexFloat uniform_mean_curvature(Surface_mesh &mesh, const std::string &propName = UNIFORM_MEAN_CURVATURE) {
+    static VertexFloat uniform_mean_curvature(Surface_mesh &mesh, const std::string &propName = UNIFORM_MEAN_CURVATURE,
+        const std::string &areaName = VORONOI_AREA, bool halfInvArea = true) {
       VertexFloat uniform_mean_curv = mesh.add_vertex_property<float>(propName);
+      VertexFloat voro_area = mesh.get_vertex_property<float>(areaName);
+      if(!voro_area) {
+        voro_area = voronoi_area(mesh, halfInvArea, areaName);
+      }
 
+      Surface_mesh::Vertex_iterator v_it, v_end = mesh.vertices_end();
+      for (v_it = mesh.vertices_begin(); v_it != v_end; ++v_it) {
+        uniform_mean_curv[*v_it] = 0.0f;
+        Point laplace(0, 0, 0);
+        if (!mesh.is_boundary(*v_it)) {
+          Surface_mesh::Vertex_around_vertex_circulator vv_it, vv_end;
+          vv_it = vv_end = mesh.vertices(*v_it);
+          do{
+            laplace += (mesh.position(*vv_it) - mesh.position(*v_it));
+          } while (++vv_it != vv_end);
+          laplace *= halfInvArea ? voro_area[*v_it] : 0.5f / voro_area[*v_it];
+          uniform_mean_curv[*v_it] = laplace.norm();
+        }
+      }
       return uniform_mean_curv;
     }
 
     /**
      * Mean curvature H at each vertex
      */
-    static VertexFloat mean_curvature(Surface_mesh &mesh, const std::string &propName = MEAN_CURVATURE) {
+    static VertexFloat mean_curvature(Surface_mesh &mesh, const std::string &propName = MEAN_CURVATURE,
+        const std::string &cotName = COT_PAIR,
+        const std::string &areaName = VORONOI_AREA, bool halfInvArea = true) {
       VertexFloat mean_curv = mesh.add_vertex_property<float>(propName);
+      EdgeFloat cot = mesh.get_edge_property<float>(cotName);
+      if(!cot) {
+        cot = cot_pair(mesh, cotName);
+      }
+      VertexFloat voro_area = mesh.get_vertex_property<float>(areaName);
+      if(!voro_area) {
+        voro_area = voronoi_area(mesh, halfInvArea, areaName);
+      }
 
+      Surface_mesh::Vertex_iterator v_it, v_end = mesh.vertices_end();
+      for (v_it = mesh.vertices_begin(); v_it != v_end; ++v_it) {
+        mean_curv[*v_it] = 0.0f;
+        Point laplace(0, 0, 0);
+        if (!mesh.is_boundary(*v_it)) {
+          Surface_mesh::Halfedge_around_vertex_circulator vh_it, vh_end;
+          vh_it = vh_end = mesh.halfedges(*v_it);
+          do {
+            Surface_mesh::Halfedge h = *vh_it;
+            laplace += cot[mesh.edge(h)] * (mesh.position(mesh.to_vertex(h)) - mesh.position(*v_it));
+          } while (++vh_it != vh_end);
+          laplace *= halfInvArea ? voro_area[*v_it] : 0.5f / voro_area[*v_it];
+          mean_curv[*v_it] = laplace.norm();
+        }
+      }
       return mean_curv;
     }
 
@@ -279,7 +323,8 @@ class ofxOpenGP {
      *
      * K = 1/A sum_i 2pi - phi_i
      */
-    static VertexFloat gauss_curvature(Surface_mesh &mesh, bool halfInvArea = true, const std::string &propName = GAUSS_CURVATURE, const std::string &areaName = VORONOI_AREA) {
+    static VertexFloat gauss_curvature(Surface_mesh &mesh, const std::string &propName = GAUSS_CURVATURE,
+        const std::string &areaName = VORONOI_AREA, bool halfInvArea = true) {
       VertexFloat gauss_curv = mesh.add_vertex_property<float>(propName);
       VertexFloat voro_area = mesh.get_vertex_property<float>(areaName);
       if(!voro_area) {
@@ -297,12 +342,12 @@ class ofxOpenGP {
           do {
             vv_it2 = vv_it; // copy to get next vertex
             ++vv_it2;
-            Point d0 = (mesh.point(*vv_it) - mesh.point(*v_it)).normalize();
-            Point d1 = (mesh.point(*vv_it2) - mesh.point(*v_it)).normalize();
-            float cos_angle = std::max(lb, std::min(ub, d0.dot(d1) ));
-            angles += std::acos(cos_angle);
+            Point d0 = (mesh.position(*vv_it) - mesh.position(*v_it)).normalize();
+            Point d1 = (mesh.position(*vv_it2) - mesh.position(*v_it)).normalize();
+            float cos_angle = std::max(-1.0f, std::min(1.0f, d0.dot(d1) ));
+            angle_sum += std::acos(cos_angle);
           } while(++vv_it != vv_end);
-          float diff_sum = 2 * M_PI - angles;
+          float diff_sum = 2 * M_PI - angle_sum;
           gauss_curv[*v_it] = halfInvArea ? diff_sum * 2.0f * voro_area[*v_it] : diff_sum / voro_area[*v_it];
         }
       }
