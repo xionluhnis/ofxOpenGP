@@ -40,7 +40,7 @@ void ofApp::update(){
 
     // convert using ofxOpenGP
     float scale = 0.5f * std::min(ofGetWidth(), ofGetHeight());
-    bool ok = ofxOpenGP::convert(surf, mesh, OFX_AUTO_MESH, scale);
+    bool ok = ofxOpenGP::convert(surf, mesh, scale);
     std::cout << "Loaded " << path << ": " << (ok ? "OK" : "Failed!") << "\n";
   }
 }
