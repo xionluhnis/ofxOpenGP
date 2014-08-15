@@ -24,6 +24,12 @@ ofxOpenGP::convert(mesh, newMesh);
 
 For a more comprehensive case, look at the two projects in `example-simple/` and `example-visualization/`.
 
+Advanced Usage
+--------------
+`ofxOpenGP` ships several utility functions to visualize the quality of a mesh.
+
+**TODO** give a list and explain them.
+
 FAQ
 ---
 
