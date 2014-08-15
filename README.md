@@ -22,7 +22,7 @@ ofMesh newMesh;
 ofxOpenGP::convert(mesh, newMesh);
 ```
 
-For a more comprehensive case, look at the project in `example/`.
+For a more comprehensive case, look at the two projects in `example-simple/` and `example-visualization/`.
 
 FAQ
 ---
@@ -37,11 +37,16 @@ You can either
 
   - rescale it specifically (see `ofxOpenGP::normalize` and `ofxOpenGP::rescale`), 
   - change your camera settings, or
-  - automatically scale it using the 4th parameter of `ofxOpenGP::convert` such as in the example:
+  - automatically scale it using the settings of `ofxOpenGP::convert` such as in the example:
 
 ```cpp
 float scale = 0.5f * std::min(ofGetWidth(), ofGetHeight());
-ofxOpenGP::convert(mesh, newMesh, OFX_AUTO_MESH, scale);
+ofxOpenGP::convert(mesh, newMesh, scale);
+
+// or with other settings
+ofxOpenGP::Settings settings; // setup
+settings << scale;
+ofxOpenGP::convert(mesh, newMesh, settings);
 ```
 
 **Q. My mesh is a polygonal mesh with fancy face valences, what can I do?**
@@ -57,14 +62,15 @@ A. Here it is:
 ```cpp
 bool ofxOpenGP::convert(opengp::Surface_mesh &mesh,
                         ofMesh &newMesh,
-                        ofxMeshType meshType,
-                        float scaling = 1.0f);
+                        ofxOpenGP::Settings settings);
 ```
 
   - `mesh`: your surface mesh from OpenGP (not `const` as we use triangulate when needed)
   - `newMesh`: your `ofMesh` for an easy display within OpenFrameworks
-  - `meshType`: one of `OFX_AUTO_MESH`, `OFX_TRIANGLE_MESH` and `OFX_QUAD_MESH`
-  - `scaling`: a factor by which to scale the vertex positions (because of `ofEasyCam`)
+  - `settings`: settings made of
+    - *meshType*, one of `OFX_AUTO_MESH`, `OFX_TRIANGLE_MESH` and `OFX_QUAD_MESH`
+    - *colorType*, one of `OFX_AUTO_COLORS`, `OFX_VERTEX_COLORS`, `OFX_FACE_COLORS` and `OFX_NO_COLORS`
+    - *meshScaling*, a factor by which to scale the vertex positions (because of `ofEasyCam`)
   - returns `true` if it worked without error, `false` in case an error occurred
 
 License
