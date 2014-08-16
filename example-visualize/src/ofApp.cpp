@@ -31,7 +31,7 @@ void ofApp::update(){
     pathChanged = false;
     propChanged = true;
     // mesh
-    mesh.clear();
+    mesh = Surface_mesh();
     if(!mesh.read(path)){
       std::cerr << "Couldn't read " << path << "\n";
       return;
@@ -139,12 +139,6 @@ void ofApp::draw(){
         break;
       case OGP_GAUSS_CURVATURE:
         ofDrawBitmapString("GAUSS_CURVATURE", 50, ypos); ypos += 20;
-        break;
-      case OGP_K1:
-        ofDrawBitmapString("K1", 50, ypos); ypos += 20;
-        break;
-      case OGP_K2:
-        ofDrawBitmapString("K2", 50, ypos); ypos += 20;
         break;
       case OGP_VORONOI_AREA:
         ofDrawBitmapString("VORONOI_AREA", 50, ypos); ypos += 20;
