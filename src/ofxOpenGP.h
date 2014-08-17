@@ -49,10 +49,14 @@ enum ofxColorType {
   OFX_NO_COLORS
 };
 
-using namespace opengp;
-
 class ofxOpenGP {
   public:
+
+    typedef opengp::Surface_mesh Surface_mesh;
+    typedef opengp::Vec3 Vec3;
+    typedef opengp::Point Point;
+    typedef opengp::Normal Normal;
+    typedef opengp::Color Color;
 
     /**
      * Setting container
