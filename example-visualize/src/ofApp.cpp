@@ -59,12 +59,16 @@ void ofApp::update(){
     Surface_mesh::Face_property<float> fdata;
     switch(prop){
       case OGP_UNIFORM_MEAN_CURVATURE:
+        ofxOpenGP::voronoi_area(mesh);
         vdata = ofxOpenGP::uniform_mean_curvature(mesh);
         break;
       case OGP_MEAN_CURVATURE:
+        ofxOpenGP::voronoi_area(mesh);
+        ofxOpenGP::cot_pair(mesh);
         vdata = ofxOpenGP::mean_curvature(mesh);
         break;
       case OGP_GAUSS_CURVATURE:
+        ofxOpenGP::voronoi_area(mesh);
         vdata = ofxOpenGP::gauss_curvature(mesh);
         break;
       case OGP_VORONOI_AREA:
@@ -172,13 +176,25 @@ void ofApp::keyPressed(int key){
         }
       }
       break;
+    case 's':
+      std::cout << "Smoothing of mesh.\n";
+      ofxOpenGP::laplace_uniform_smooth(mesh);
+      mesh.update_vertex_normals();
+      propChanged = true;
+      break;
+    case 't':
+      std::cout << "Tangential smoothing of mesh.\n";
+      ofxOpenGP::laplace_uniform_smooth(mesh, true);
+      mesh.update_vertex_normals();
+      propChanged = true;
+      break;
     case 'h':
       help = !help;
       break;
     case ' ':
       {
         ofFile file(ofToDataPath(path));
-        ofFileDialogResult res = ofSystemLoadDialog("Chose mesh file (.obj, .off, .ply)", false, file.getEnclosingDirectory());
+        ofFileDialogResult res = ofSystemLoadDialog("Choose mesh file (.obj, .off, .ply)", false, file.getEnclosingDirectory());
         if(!res.bSuccess) return;
         if(!ofFile(res.getPath()).canRead()) return;
         path = res.getPath();

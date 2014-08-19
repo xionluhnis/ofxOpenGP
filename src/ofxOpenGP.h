@@ -583,4 +583,46 @@ class ofxOpenGP {
       return col;
     }
 
+    ///////////////////////////////////////////////////////////////////////////
+    ///// Mesh operations /////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////
+    static void laplace_uniform_smooth(Surface_mesh &mesh, bool tangential = false, unsigned int rounds = 5, float eta = 0.5){
+      Surface_mesh::Vertex_property<Vec3> laplace = mesh.vertex_property<Vec3>("v:tmp:vec3f");
+      Surface_mesh::Vertex_property<Normal> normals = mesh.vertex_property<Normal>("v:normal");
+      if(tangential){
+        mesh.update_vertex_normals();
+      }
+      for(unsigned int r = 0; r < rounds; ++r){
+        Surface_mesh::Vertex_iterator v_it, v_end = mesh.vertices_end();
+        for(v_it = mesh.vertices_begin(); v_it != v_end; ++v_it){
+          Vec3 barycenter(0, 0, 0);
+          int val = 0;
+          Surface_mesh::Vertex_around_vertex_circulator vv_it, vv_end;
+          vv_it = vv_end = mesh.vertices(*v_it);
+          do {
+            barycenter += mesh.position(*vv_it);
+            ++val;
+          } while (++vv_it != vv_end);
+          barycenter *= 1.0f / val;
+          Vec3 u = barycenter - mesh.position(*v_it);
+          if(tangential){
+            Normal n = normals[*v_it];
+            float n_norm = n.norm();
+            if(n_norm == 0 || n_norm != n_norm){
+              u = Normal(0, 0, 0);
+            } else {
+              // tangential component of u
+              u = u - n * u.dot(n) / n_norm;
+            }
+          }
+          laplace[*v_it] = u;
+        }
+        // apply shift
+        for(v_it = mesh.vertices_begin(); v_it != v_end; ++v_it){
+          if(mesh.is_boundary(*v_it)) continue;
+          mesh.position(*v_it) += laplace[*v_it] * eta;
+        }
+      }
+    }
+
 };
